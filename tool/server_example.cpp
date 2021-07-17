@@ -1,26 +1,56 @@
-///////////////////////////////////////////////////////////
-/////////////////////SERVER EXAMPLE////////////////////////
-///////////////////////////////////////////////////////////
-
-
 #include <iostream>
 #include <signal.h>
+#include <json_cpp.h>
+#include <cell_world.h>
+#include "../include/tcp_server.h"
 
-#include "include/tcp_server.h"
+
+using namespace std;
+using namespace json_cpp;
+using namespace cell_world;
+
+struct Command : Json_object {
+    Json_object_members(
+            Add_member(command);
+            Add_member(content);
+            );
+    string command;
+    string content;
+};
+
+struct Game_status : Json_object {
+    Json_object_members(
+            Add_member(PreyLocation);
+            Add_member(PredatorLocation);
+
+            );
+    Location PreyLocation;
+    Location PredatorLocation;
+} game_status;
+
 
 // declare the server
 TcpServer server;
 
 // declare a server observer which will receive incoming messages.
 // the server supports multiple observers
-server_observer_t observer1, observer2;
+server_observer_t observer;
 
 // observer callback. will be called for every new message received by clients
 // with the requested IP address
-void onIncomingMsg1(const Client & client, const char * msg, size_t size) {
+void onIncomingMsg(const Client & client, const char * msg, size_t size) {
     std::string msgStr = msg;
-    // print the message content
-    std::cout << "Observer1 got client msg: " << msgStr << std::endl;
+    Command server_cmd;
+//    msgStr >> server_cmd;
+//    if (server_cmd.command == "update_game_status"){
+//        server_cmd.content >> game_status;
+//        client_cmd.command = "update_destination";
+//        client_cmd.content << game_status.PreyLocation;
+//    }
+    Command client_cmd;
+    // print the message
+    //game_status.load(msg);
+    std::cout << "Observer got client msg: " << msgStr << std::endl;
     // if client sent the string "quit", close server
     // else if client sent "print" print the server clients
     // else just print the client message
@@ -35,21 +65,10 @@ void onIncomingMsg1(const Client & client, const char * msg, size_t size) {
     } else if (msgStr.find("print") != std::string::npos){
         server.printClients();
     } else {
-        std::string replyMsg = "server got this msg: "+ msgStr;
+        std::string replyMsg;
+        replyMsg << client_cmd;
         server.sendToAllClients(replyMsg.c_str(), replyMsg.length());
     }
-}
-
-// observer callback. will be called for every new message received by clients
-// with the requested IP address
-void onIncomingMsg2(const Client & client, const char * msg, size_t size) {
-    std::string msgStr = msg;
-    // print client message
-    std::cout << "Observer2 got client msg: " << msgStr << std::endl;
-
-    // reply back to client
-    std::string replyMsg = "server got this msg: "+ msgStr;
-    server.sendToClient(client, msg, size);
 }
 
 // observer callback. will be called when client disconnects
@@ -59,26 +78,25 @@ void onClientDisconnected(const Client & client) {
 
 int main(int argc, char *argv[])
 {
+    if (argc != 2) {
+        cout << "Wrong parameter." << endl;
+        cout << "Usage: ./tcp_server [Port]" << endl;
+        exit(1);
+    }
+    int port = atoi(argv[1]);
     // start server on port 65123
-    pipe_ret_t startRet = server.start(65123);
+    pipe_ret_t startRet = server.start(port);
     if (startRet.success) {
-        std::cout << "Server setup succeeded" << std::endl;
+        std::cout << "Server setup succeeded on port " << port << std::endl;
     } else {
         std::cout << "Server setup failed: " << startRet.msg << std::endl;
         return EXIT_FAILURE;
     }
 
-    // configure and register observer1
-    observer1.incoming_packet_func = onIncomingMsg1;
-    observer1.disconnected_func = onClientDisconnected;
-    observer1.wantedIp = "127.0.0.1";
-    server.subscribe(observer1);
-
-    // configure and register observer2
-    observer2.incoming_packet_func = onIncomingMsg2;
-    observer1.disconnected_func = nullptr; //don't care about disconnection
-    observer2.wantedIp = "10.88.0.11"; // use empty string instead to receive messages from any IP address
-    server.subscribe(observer2);
+    // configure and register observer
+    observer.incoming_packet_func = onIncomingMsg;
+    observer.disconnected_func = onClientDisconnected;
+    server.subscribe(observer);
 
     // receive clients
     while(1) {

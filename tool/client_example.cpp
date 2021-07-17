@@ -5,7 +5,7 @@
 
 #include <iostream>
 #include <signal.h>
-#include "include/tcp_client.h"
+#include "../include/tcp_client.h"
 
 TcpClient client;
 
