@@ -106,26 +106,18 @@ void onIncomingMsg(const Client & client, const char * msg, size_t size) {
         client_cmd.command = "update_predator_destination";
         auto game_state = game_state_vector.to_game_state();
         client_cmd.content << game_state.prey.location.to_location();
+        std::cout << "New game state: " << game_state << std::endl;
     }
-    // print the message
-    //game_status.load(msg);
-    std::cout << "Observer got client msg: " << msgStr << std::endl;
-    // if client sent the string "quit", close server
-    // else if client sent "print" print the server clients
-    // else just print the client message
-//    if (msgStr.find("quit") != std::string::npos) {
-//        std::cout << "Closing server..." << std::endl;
-//        pipe_ret_t finishRet = server.finish();
-//        if (finishRet.success) {
-//            std::cout << "Server closed." << std::endl;
-//        } else {
-//            std::cout << "Failed closing server: " << finishRet.msg << std::endl;
-//        }
-//    } else if (msgStr.find("print") != std::string::npos){
-//        server.printClients();
-//    } else {
+
     std::string replyMsg;
-    replyMsg << client_cmd;
+    if (Chance::coin_toss(.5)){
+        Command set_speed;
+        set_speed.command = "update_predator_speed";
+        set_speed.content = "3";
+        replyMsg << set_speed;
+    } else {
+        replyMsg << client_cmd;
+    }
     server.sendToAllClients(replyMsg.c_str(), replyMsg.length());
     cout << "sent to game : " << replyMsg << endl;
 //    }
