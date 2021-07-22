@@ -18,8 +18,72 @@ struct Command : Json_object {
     string content;
 };
 
-struct Game_status : Json_vector<double> {
-} game_status;
+
+struct Location3 : Json_object{
+    Json_object_members(
+            Add_member(x);
+            Add_member(y);
+            Add_member(z);
+            );
+    double x,y,z;
+    Location to_location() const{
+        return {x,y};
+    }
+};
+
+struct Rotation3 : Json_object{
+    Json_object_members(
+            Add_member(roll);
+            Add_member(pitch);
+            Add_member(yaw);
+    );
+    double roll,pitch,yaw;
+};
+
+
+struct Agent_state : Json_object {
+    Json_object_members(
+            Add_member(location);
+            Add_member(rotation);
+            );
+    Location3 location;
+    Rotation3 rotation;
+};
+
+struct Game_state : Json_object {
+    Json_object_members(
+            Add_member(episode);
+            Add_member(time_stamp);
+            Add_member(predator);
+            Add_member(prey);
+            );
+    unsigned int episode;
+    double time_stamp;
+    Agent_state predator;
+    Agent_state prey;
+};
+
+
+struct Game_state_vector : Json_vector<double> {
+    Game_state to_game_state() const{
+        Game_state gs;
+        gs.episode = (unsigned int)(*this)[0];
+        gs.time_stamp = (*this)[1];
+        gs.prey.location.x = (*this)[2];
+        gs.prey.location.y = (*this)[3];
+        gs.prey.location.z = (*this)[4];
+        gs.prey.rotation.roll = (*this)[5];
+        gs.prey.rotation.pitch = (*this)[6];
+        gs.prey.rotation.yaw = (*this)[7];
+        gs.predator.location.x = (*this)[9];
+        gs.predator.location.y = (*this)[10];
+        gs.predator.location.z = (*this)[11];
+        gs.predator.rotation.roll = (*this)[12];
+        gs.predator.rotation.pitch = (*this)[13];
+        gs.predator.rotation.yaw = (*this)[14];
+        return gs;
+    }
+} game_state_vector;
 
 
 // declare the server
@@ -38,12 +102,10 @@ void onIncomingMsg(const Client & client, const char * msg, size_t size) {
     msgStr >> server_cmd;
     if (server_cmd.command == "update_game_state"){
         cout << server_cmd.content << endl;
-        server_cmd.content >> game_status;
+        server_cmd.content >> game_state_vector;
         client_cmd.command = "update_predator_destination";
-        Location preyLocation;
-        preyLocation.x = game_status[1];
-        preyLocation.y = game_status[2];
-        client_cmd.content << preyLocation;
+        auto game_state = game_state_vector.to_game_state();
+        client_cmd.content << game_state.prey.location.to_location();
     }
     // print the message
     //game_status.load(msg);
