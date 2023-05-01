@@ -25,7 +25,7 @@ struct Location3 : Json_object{
             Add_member(y);
             Add_member(z);
             );
-    double x,y,z;
+    float x,y,z;
     Location to_location() const{
         return {x,y};
     }
